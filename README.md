@@ -2,6 +2,8 @@
 
 Convert exported `.eml` messages into clean, LLM-ready Markdown. The output includes the subject, sender, sent date, recipients, and the original HTML or plain-text message body. Attachments remain separate.
 
+HTML bodies are converted first. If Pandoc must preserve an unsupported layout table as raw HTML, `email2llm` automatically retries with the message's plain-text MIME alternative.
+
 ## Requirements
 
 - Python 3.10+

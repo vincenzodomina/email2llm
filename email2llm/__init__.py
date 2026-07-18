@@ -12,7 +12,11 @@ from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Sequence
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
+
+_RAW_HTML_TABLE = re.compile(
+    r"<(?:table|thead|tbody|tfoot|tr|td|th)(?:\s|>)", re.IGNORECASE
+)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -95,18 +99,27 @@ def destination_path(
     return directory / f"{sent_date:%Y%m%d}_{sanitize_filename(name)}.md"
 
 
-def render_markdown(message: Message) -> str:
-    body = message.get_body(preferencelist=("html", "plain"))
-    if body is None:
-        raise ValueError("email has no HTML or plain-text body")
+def render_body_markdown(message: Message) -> str:
+    html_body = message.get_body(preferencelist=("html",))
+    plain_body = message.get_body(preferencelist=("plain",))
 
-    body_format = (
-        "html-native_spans-native_divs"
-        if body.get_content_type() == "text/html"
-        else "markdown"
-    )
+    if html_body is not None:
+        content = run_pandoc(
+            html_body.get_content(), "html-native_spans-native_divs"
+        )
+        if _RAW_HTML_TABLE.search(content) and plain_body is not None:
+            return run_pandoc(plain_body.get_content(), "markdown")
+        return content
+
+    if plain_body is not None:
+        return run_pandoc(plain_body.get_content(), "markdown")
+
+    raise ValueError("email has no HTML or plain-text body")
+
+
+def render_markdown(message: Message) -> str:
     header = run_pandoc(header_html(message), "html")
-    content = run_pandoc(body.get_content(), body_format)
+    content = render_body_markdown(message)
     return f"{header}\n\n{content}\n"
 
 

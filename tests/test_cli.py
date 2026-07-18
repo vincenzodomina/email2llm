@@ -24,6 +24,35 @@ def write_email(path: Path, subject: str = "Quarterly / Review?") -> None:
 
 
 class Email2LlmTests(unittest.TestCase):
+    def test_raw_html_table_falls_back_to_plain_text_body(self) -> None:
+        message = EmailMessage()
+        message.set_content("Readable fallback")
+        message.add_alternative("<table><tr><td>Nested</td></tr></table>", subtype="html")
+
+        with patch.object(
+            email2llm,
+            "run_pandoc",
+            side_effect=["<table><tr><td>Nested</td></tr></table>", "Readable fallback"],
+        ) as convert:
+            content = email2llm.render_body_markdown(message)
+
+        self.assertEqual(content, "Readable fallback")
+        self.assertEqual(convert.call_count, 2)
+        self.assertEqual(convert.call_args_list[1].args[1], "markdown")
+
+    def test_clean_html_does_not_use_plain_text_fallback(self) -> None:
+        message = EmailMessage()
+        message.set_content("Plain alternative")
+        message.add_alternative("<p>Structured HTML</p>", subtype="html")
+
+        with patch.object(
+            email2llm, "run_pandoc", return_value="Structured Markdown"
+        ) as convert:
+            content = email2llm.render_body_markdown(message)
+
+        self.assertEqual(content, "Structured Markdown")
+        convert.assert_called_once()
+
     def test_single_conversion_uses_date_and_sanitized_subject(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "message.eml"
