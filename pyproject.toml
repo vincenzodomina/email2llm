@@ -1,0 +1,15 @@
+[project]
+name = "email2llm"
+version = "0.1.0"
+description = "Convert exported EML messages into clean, LLM-ready Markdown."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+email2llm = "email2llm:cli"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
